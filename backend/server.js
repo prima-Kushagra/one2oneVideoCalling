@@ -137,7 +137,7 @@ io.on('connection', (socket) => {
   console.log(`User connected: ${username} (${userId}) - Socket: ${socket.id}`);
 
   // Register user as online
-  onlineUsers.set(userId, { socketId: socket.id, username, status: 'online' });
+  onlineUsers.set(userId, { socketId: socket.id, username, status: 'online', partnerId: null });
   broadcastUserList();
 
   // --- WebRTC Signaling Relays (Direct Calling) ---
@@ -158,11 +158,11 @@ io.on('connection', (socket) => {
 
     console.log(`Relaying call from ${username} to ${target.username}`);
 
-    // Set both to busy temporarily (handshake phase)
-    // Actually, maybe only when call is answered? 
-    // Usually, we set to busy when call starts to avoid multiple incoming calls.
+    // Set both to busy and track partners
     onlineUsers.get(callerId).status = 'busy';
+    onlineUsers.get(callerId).partnerId = toId;
     onlineUsers.get(toId).status = 'busy';
+    onlineUsers.get(toId).partnerId = callerId;
     broadcastUserList();
 
     socket.to(target.socketId).emit('incoming-call', {
@@ -198,8 +198,14 @@ io.on('connection', (socket) => {
     const { toId } = data;
 
     // Reset status for both users
-    if (onlineUsers.has(userId)) onlineUsers.get(userId).status = 'online';
-    if (onlineUsers.has(toId)) onlineUsers.get(toId).status = 'online';
+    if (onlineUsers.has(userId)) {
+      onlineUsers.get(userId).status = 'online';
+      onlineUsers.get(userId).partnerId = null;
+    }
+    if (onlineUsers.has(toId)) {
+      onlineUsers.get(toId).status = 'online';
+      onlineUsers.get(toId).partnerId = null;
+    }
 
     broadcastUserList();
 
@@ -213,10 +219,21 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${username} (${userId})`);
 
-    // If user was in a call, we should notify the peer
-    // But since we don't have a stable "peerId" in the socket object yet, 
-    // it's better to loop or have client notify.
-    // For simplicity, let's just clean up the status.
+    const userData = onlineUsers.get(userId);
+    if (userData && userData.partnerId) {
+      const partnerId = userData.partnerId;
+      const partnerData = onlineUsers.get(partnerId);
+
+      if (partnerData) {
+        // Notify the partner that the call has ended abruptly
+        socket.to(partnerData.socketId).emit('call-ended', { fromId: userId });
+
+        // Reset partner status
+        partnerData.status = 'online';
+        partnerData.partnerId = null;
+      }
+    }
+
     onlineUsers.delete(userId);
     broadcastUserList();
   });
