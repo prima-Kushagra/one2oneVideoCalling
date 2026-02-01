@@ -1,0 +1,18 @@
+# Ignore node_modules explicitly
+backend/node_modules/
+frontend/node_modules/
+
+# Ignore env files
+frontend/.env
+backend/.env
+.env
+.env.*
+
+# Build outputs
+frontend/dist
+frontend/build
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode
