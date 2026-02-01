@@ -2,33 +2,56 @@
 @media (max-width: 768px) {
   .call-screen {
     padding: 10px;
+    padding-bottom: env(safe-area-inset-bottom, 10px);
   }
 
   .video-container {
-    flex-direction: column;
-    gap: 10px;
+    padding: 10px;
+    padding-bottom: 140px;
+    /* More space for controls on mobile */
   }
 
-  .video-wrapper {
+  /* Remote video filling space */
+  .video-wrapper.remote {
     max-width: 100%;
+    aspect-ratio: auto;
+    height: 100%;
   }
 
-  /* Portrait camera support */
-  .video-wrapper {
-    aspect-ratio: 9 / 16;
-  }
-
-  /* PiP fix */
+  /* PiP: MUST appear in BOTTOM-RIGHT corner */
   .video-wrapper.local {
-    width: 120px;
-    bottom: 90px;
-    right: 10px;
+    top: auto;
+    /* Disable desktop top position */
+    right: max(15px, env(safe-area-inset-right, 15px));
+    bottom: calc(110px + env(safe-area-inset-bottom, 15px));
+    /* Above controls */
+    width: 35vw;
+    min-width: 120px;
+    max-width: 180px;
+    aspect-ratio: 9 / 16;
+    /* Mobile orientation standard */
+    z-index: 40;
+    border-width: 1.5px;
   }
 
-  /* Controls safe-area fix (iOS) */
+  /* Hide label on very small local video if needed, or just shrink */
+  .video-wrapper.local .user-label {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    bottom: 5px;
+    left: 5px;
+  }
+
   .controls {
-    bottom: env(safe-area-inset-bottom, 10px);
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: max(1.5rem, env(safe-area-inset-bottom, 15px));
+    width: 90%;
+    max-width: 320px;
+    padding: 0.8rem 1.2rem;
+    gap: 1rem;
+  }
+
+  .control-btn {
+    width: 48px;
+    height: 48px;
   }
 }
