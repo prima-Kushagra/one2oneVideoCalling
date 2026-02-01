@@ -42,10 +42,13 @@ export const useWebRTC = () => {
     useEffect(() => {
         if (!token) return;
 
-        socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
-            auth: { token },
-            reconnection: true
-        });
+    socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
+      auth: { token },
+     transports: ['websocket'],   // 🔥 critical for Render/Vercel
+     secure: true,
+     reconnection: true
+});
+
 
         socketRef.current.on('update-user-list', (users) => {
             // Filter out self
@@ -298,3 +301,4 @@ export const useWebRTC = () => {
         toggleCamera
     };
 };
+

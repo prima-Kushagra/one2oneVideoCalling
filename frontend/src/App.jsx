@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import './App.css';
+import './styles/base.css';
+import './styles/auth.css';
+import './styles/dashboard.css';
+import './styles/call.css';
+import './styles/video.css';
+import './styles/controls.css';
+import './styles/responsive.css';
 import { useWebRTC } from './hooks/useWebRTC';
 import Dashboard from './components/Dashboard';
 import VideoGrid from './components/VideoGrid';
@@ -52,7 +58,12 @@ const AppContent = () => {
   return (
     <div className="app-container">
       <div className="logout-container">
-        <button className="logout-btn" onClick={logout}>Logout</button>
+        <button className="logout-btn" onClick={logout}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+          </svg>
+          Logout
+        </button>
       </div>
 
       {callStatus === 'idle' && (
@@ -67,9 +78,18 @@ const AppContent = () => {
         <div className="call-screen">
           <div className="header">
             {callStatus === 'connected' ? (
-              <span className="status-badge">Live</span>
+              <span className="status-badge">
+                <span className="dot"></span>
+                Live
+              </span>
             ) : (
-              <span className="status-badge warning">Calling...</span>
+              <span className="status-badge warning">
+                <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.2" />
+                  <path d="M12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4522" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+                Calling...
+              </span>
             )}
           </div>
 
@@ -90,11 +110,21 @@ const AppContent = () => {
       )}
 
       {callStatus === 'receiving' && incomingCall && (
-        <div className="incoming-call-overlay">
-          <h2>📞 Incoming Call from {incomingCall.fromName}</h2>
-          <div className="incoming-call-actions">
-            <button className="join-btn" onClick={answerCall}>Accept ✅</button>
-            <button className="reject-btn" onClick={rejectCall}>Reject ❌</button>
+        <div className="incoming-call-overlay glass">
+          <div className="incoming-call-card">
+            <div className="caller-avatar">
+              {incomingCall.fromName.charAt(0).toUpperCase()}
+            </div>
+            <h2>Incoming Call</h2>
+            <p>{incomingCall.fromName} is calling you...</p>
+            <div className="incoming-call-actions">
+              <button className="join-btn" onClick={answerCall}>
+                Accept
+              </button>
+              <button className="reject-btn" onClick={rejectCall}>
+                Decline
+              </button>
+            </div>
           </div>
         </div>
       )}

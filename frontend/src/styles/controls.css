@@ -1,0 +1,49 @@
+/* Controls */
+.controls {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--glass-border);
+  border-radius: 40px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  box-shadow: var(--shadow-xl);
+}
+
+.control-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: var(--control-bg);
+  font-size: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.control-btn.active {
+  background: var(--danger-color);
+}
+
+.control-btn.leave {
+  background: #ff4444;
+}
+
+.control-btn.leave:hover {
+  background: #cc0000;
+}

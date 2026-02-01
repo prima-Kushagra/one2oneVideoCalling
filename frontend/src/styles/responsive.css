@@ -1,0 +1,34 @@
+/* ===== Mobile Layout ===== */
+@media (max-width: 768px) {
+  .call-screen {
+    padding: 10px;
+  }
+
+  .video-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .video-wrapper {
+    max-width: 100%;
+  }
+
+  /* Portrait camera support */
+  .video-wrapper {
+    aspect-ratio: 9 / 16;
+  }
+
+  /* PiP fix */
+  .video-wrapper.local {
+    width: 120px;
+    bottom: 90px;
+    right: 10px;
+  }
+
+  /* Controls safe-area fix (iOS) */
+  .controls {
+    bottom: env(safe-area-inset-bottom, 10px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
