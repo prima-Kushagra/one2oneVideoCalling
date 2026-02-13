@@ -13,7 +13,7 @@ export const useWebRTC = () => {
     const { token, user } = useAuth();
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [targetId, setTargetId] = useState(null);
-    const [callStatus, setCallStatus] = useState('idle'); // idle, calling, receiving, connected
+    const [callStatus, setCallStatus] = useState('idle'); 
     const [incomingCall, setIncomingCall] = useState(null);
 
     const [isMuted, setIsMuted] = useState(false);
@@ -31,34 +31,33 @@ export const useWebRTC = () => {
         targetIdRef.current = targetId;
     }, [targetId]);
 
-    // Persistent stream attachment
+    
     useEffect(() => {
         if (localVideoRef.current && localStreamRef.current) {
             localVideoRef.current.srcObject = localStreamRef.current;
         }
     }, [callStatus]);
 
-    // Initial Socket Setup
+    
     useEffect(() => {
         if (!token) return;
 
-    socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-     transports: ['websocket'],   // 🔥 critical for Render/Vercel
-     secure: true,
-     reconnection: true
-});
+        socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
+            auth: { token },
+            transports: ['websocket'],   
+            secure: true,
+            reconnection: true
+        });
 
 
         socketRef.current.on('update-user-list', (users) => {
-            // Filter out self
+           
             setOnlineUsers(users.filter(u => u.userId !== user.id));
         });
 
         socketRef.current.on('incoming-call', ({ fromId, fromName, offer }) => {
             if (callStatus !== 'idle') {
-                // We are already in a call or calling, maybe auto-reject or handle elsewhere
-                // For now, let's just ignore if busy, but backend should handle this
+                
                 return;
             }
             setIncomingCall({ fromId, fromName, offer });
@@ -70,7 +69,7 @@ export const useWebRTC = () => {
             if (peerConnectionRef.current) {
                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
                 setCallStatus('connected');
-                // Process queued candidates
+               
                 while (pendingCandidatesRef.current.length > 0) {
                     const candidate = pendingCandidatesRef.current.shift();
                     await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -133,7 +132,7 @@ export const useWebRTC = () => {
     }, [cleanup]);
 
     const getMedia = async () => {
-        // Stop any existing tracks first to prevent "Device in use" error
+        
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
@@ -143,7 +142,7 @@ export const useWebRTC = () => {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
 
-            // Critical: wait a tiny bit for video element to be available if status just changed
+            
             if (localVideoRef.current) {
                 localVideoRef.current.srcObject = stream;
             }
@@ -154,7 +153,7 @@ export const useWebRTC = () => {
         }
     };
 
-    // Re-attach streams whenever call status changes
+    
     useEffect(() => {
         if (callStatus === 'connected' || callStatus === 'calling') {
             const timer = setTimeout(() => {
@@ -167,7 +166,7 @@ export const useWebRTC = () => {
                         remoteVideoRef.current.srcObject = remoteStream;
                     }
                 }
-            }, 200); // 200ms is safer for component mount
+            }, 200); 
             return () => clearTimeout(timer);
         }
     }, [callStatus]);
@@ -244,7 +243,7 @@ export const useWebRTC = () => {
 
         socketRef.current.emit('answer-call', { toId: incomingCall.fromId, answer });
 
-        // Process queued candidates
+        
         while (pendingCandidatesRef.current.length > 0) {
             const candidate = pendingCandidatesRef.current.shift();
             await pc.addIceCandidate(new RTCIceCandidate(candidate));

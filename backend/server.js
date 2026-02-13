@@ -7,15 +7,15 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user.model');
 
-// --- Server Setup ---
+
 const app = express();
-app.use(cors()); // Allow Cross-Origin requests
-app.use(express.json()); // Parse JSON bodies
+app.use(cors()); 
+app.use(express.json()); 
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins (dev only)
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
@@ -23,13 +23,13 @@ const io = new Server(server, {
 // --- MongoDB Connection ---
 console.log('Attempting to connect to MongoDB...');
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .then(() => console.log(' Connected to MongoDB Atlas'))
   .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1); // Exit if cannot connect to DB
+    console.error(' MongoDB connection error:', err.message);
+    process.exit(1); 
   });
 
-// --- Auth Routes ---
+
 
 // Signup
 app.post('/api/auth/signup', async (req, res) => {
@@ -91,7 +91,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // --- User Presence Tracking ---
-const onlineUsers = new Map(); // userId -> { socketId, username, status }
+const onlineUsers = new Map();
 
 const getOnlineUsers = () => {
   return Array.from(onlineUsers.entries()).map(([userId, data]) => ({
@@ -105,7 +105,7 @@ const broadcastUserList = () => {
   io.emit('update-user-list', getOnlineUsers());
 };
 
-// --- Socket.IO Middleware (Auth) ---
+
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
@@ -136,11 +136,11 @@ io.on('connection', (socket) => {
 
   console.log(`User connected: ${username} (${userId}) - Socket: ${socket.id}`);
 
-  // Register user as online
+  
   onlineUsers.set(userId, { socketId: socket.id, username, status: 'online', partnerId: null });
   broadcastUserList();
 
-  // --- WebRTC Signaling Relays (Direct Calling) ---
+  
 
   socket.on('call-user', (data) => {
     const { toId, offer } = data;
@@ -158,7 +158,7 @@ io.on('connection', (socket) => {
 
     console.log(`Relaying call from ${username} to ${target.username}`);
 
-    // Set both to busy and track partners
+    
     onlineUsers.get(callerId).status = 'busy';
     onlineUsers.get(callerId).partnerId = toId;
     onlineUsers.get(toId).status = 'busy';
@@ -197,7 +197,7 @@ io.on('connection', (socket) => {
   socket.on('end-call', (data) => {
     const { toId } = data;
 
-    // Reset status for both users
+    
     if (onlineUsers.has(userId)) {
       onlineUsers.get(userId).status = 'online';
       onlineUsers.get(userId).partnerId = null;
@@ -215,7 +215,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- User Disconnect Logic ---
+  
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${username} (${userId})`);
 
@@ -225,10 +225,10 @@ io.on('connection', (socket) => {
       const partnerData = onlineUsers.get(partnerId);
 
       if (partnerData) {
-        // Notify the partner that the call has ended abruptly
+        
         socket.to(partnerData.socketId).emit('call-ended', { fromId: userId });
 
-        // Reset partner status
+        
         partnerData.status = 'online';
         partnerData.partnerId = null;
       }
@@ -239,7 +239,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- Error Handler ---
+
 app.use((err, req, res, next) => {
   console.error('Unhandled Error:', err);
   res.status(500).json({ message: 'Internal Server Error', error: err.message });
@@ -247,6 +247,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Socket.IO ready`);
+  console.log(` Server running on port ${PORT}`);
+  console.log(` Socket.IO ready`);
 });
