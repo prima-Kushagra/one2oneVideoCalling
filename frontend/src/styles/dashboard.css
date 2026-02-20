@@ -172,10 +172,3 @@
   color: white;
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
-
-.logout-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-}

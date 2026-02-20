@@ -7,6 +7,7 @@
   min-height: 100vh;
   background: var(--bg-gradient);
   background-attachment: fixed;
+  position: relative;
 }
 
 .glass {
@@ -140,6 +141,32 @@
   margin-top: 2rem;
   font-size: 0.9rem;
   color: #a0a0a0;
+}
+
+.back-to-home {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+}
+
+.back-to-home:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(4px);
 }
 
 .link-btn {
