@@ -13,7 +13,7 @@ export const useWebRTC = () => {
     const { token, user } = useAuth();
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [targetId, setTargetId] = useState(null);
-    const [callStatus, setCallStatus] = useState('idle'); 
+    const [callStatus, setCallStatus] = useState('idle');
     const [incomingCall, setIncomingCall] = useState(null);
 
     const [isMuted, setIsMuted] = useState(false);
@@ -31,33 +31,33 @@ export const useWebRTC = () => {
         targetIdRef.current = targetId;
     }, [targetId]);
 
-    
+
     useEffect(() => {
         if (localVideoRef.current && localStreamRef.current) {
             localVideoRef.current.srcObject = localStreamRef.current;
         }
     }, [callStatus]);
 
-    
+
     useEffect(() => {
         if (!token) return;
 
         socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
             auth: { token },
-            transports: ['websocket'],   
+            transports: ['websocket'],
             secure: true,
             reconnection: true
         });
 
 
         socketRef.current.on('update-user-list', (users) => {
-           
+
             setOnlineUsers(users.filter(u => u.userId !== user.id));
         });
 
         socketRef.current.on('incoming-call', ({ fromId, fromName, offer }) => {
             if (callStatus !== 'idle') {
-                
+
                 return;
             }
             setIncomingCall({ fromId, fromName, offer });
@@ -69,7 +69,7 @@ export const useWebRTC = () => {
             if (peerConnectionRef.current) {
                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
                 setCallStatus('connected');
-               
+
                 while (pendingCandidatesRef.current.length > 0) {
                     const candidate = pendingCandidatesRef.current.shift();
                     await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -91,8 +91,8 @@ export const useWebRTC = () => {
         });
 
         socketRef.current.on('reconnect', () => {
-  console.log("Reconnected to server");
-});
+            console.log("Reconnected to server");
+        });
 
         socketRef.current.on('call-ended', () => {
             handleCallEnded();
@@ -136,7 +136,7 @@ export const useWebRTC = () => {
     }, [cleanup]);
 
     const getMedia = async () => {
-        
+
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
@@ -146,7 +146,7 @@ export const useWebRTC = () => {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
 
-            
+
             if (localVideoRef.current) {
                 localVideoRef.current.srcObject = stream;
             }
@@ -157,7 +157,7 @@ export const useWebRTC = () => {
         }
     };
 
-    
+
     useEffect(() => {
         if (callStatus === 'connected' || callStatus === 'calling') {
             const timer = setTimeout(() => {
@@ -170,7 +170,7 @@ export const useWebRTC = () => {
                         remoteVideoRef.current.srcObject = remoteStream;
                     }
                 }
-            }, 200); 
+            }, 200);
             return () => clearTimeout(timer);
         }
     }, [callStatus]);
@@ -247,7 +247,7 @@ export const useWebRTC = () => {
 
         socketRef.current.emit('answer-call', { toId: incomingCall.fromId, answer });
 
-        
+
         while (pendingCandidatesRef.current.length > 0) {
             const candidate = pendingCandidatesRef.current.shift();
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
@@ -260,7 +260,7 @@ export const useWebRTC = () => {
         }
         cleanup();
     };
-    
+
 
     const endCall = () => {
         if (targetId && socketRef.current) {
@@ -302,7 +302,8 @@ export const useWebRTC = () => {
         rejectCall,
         endCall,
         toggleMute,
-        toggleCamera
+        toggleCamera,
+        socket: socketRef.current
     };
 };
 

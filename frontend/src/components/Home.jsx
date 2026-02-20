@@ -5,8 +5,8 @@ const Home = ({ onNavigate }) => {
         <div className="home-container">
             <div className="home-hero">
                 <div className="hero-badge">Seamless Connections</div>
-                <h1>Experience Crystal Clear Video Calling</h1>
-                <p>Connect with anyone, anywhere in real-time. Fast, secure, and professional-grade video communication at your fingertips.</p>
+                <h1>Connected Living, <span className="gradient-text">Redefined.</span></h1>
+                <p>Simple. Secure. Stunning. Join thousands of users who have chosen V2V for their most important conversations.</p>
 
                 <div className="hero-actions">
                     <button

@@ -124,7 +124,7 @@ io.on('connection', (socket) => {
 
   console.log(`User connected: ${username} (${userId}) - ${socket.id}`);
 
- 
+
   const existingUser = onlineUsers.get(userId);
 
   if (existingUser) {
@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
 
   broadcastUserList();
 
-  
+
   socket.on('call-user', ({ toId, offer }) => {
 
     const target = onlineUsers.get(toId);
@@ -171,7 +171,7 @@ io.on('connection', (socket) => {
     });
   });
 
- 
+
   socket.on('answer-call', ({ toId, answer }) => {
     const target = onlineUsers.get(toId);
     if (target) {
@@ -182,7 +182,7 @@ io.on('connection', (socket) => {
     }
   });
 
- 
+
   socket.on('ice-candidate', ({ toId, candidate }) => {
     const target = onlineUsers.get(toId);
     if (target) {
@@ -208,6 +208,38 @@ io.on('connection', (socket) => {
     }
 
     broadcastUserList();
+  });
+
+  // --- CHAT LOGIC ---
+
+  // Join a room (public or private)
+  socket.on('join-room', (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${username} joined room: ${roomId}`);
+
+    // Notify others in the room
+    socket.to(roomId).emit('user-joined-room', { userId, username, roomId });
+  });
+
+  // Leave a room
+  socket.on('leave-room', (roomId) => {
+    socket.leave(roomId);
+    console.log(`User ${username} left room: ${roomId}`);
+  });
+
+  // Send a message to a room
+  socket.on('send-message', ({ roomId, message }) => {
+    const messageData = {
+      id: Date.now().toString(),
+      senderId: userId,
+      senderName: username,
+      text: message,
+      timestamp: new Date().toISOString(),
+      roomId
+    };
+
+    // Broadcast to everyone in the room (including sender)
+    io.to(roomId).emit('new-message', messageData);
   });
 
   socket.on('disconnect', (reason) => {
@@ -241,7 +273,7 @@ io.on('connection', (socket) => {
       onlineUsers.delete(userId);
       broadcastUserList();
 
-    }, 3000); 
+    }, 3000);
   });
 
 });

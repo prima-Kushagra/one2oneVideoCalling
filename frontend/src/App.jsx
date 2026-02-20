@@ -36,7 +36,8 @@ const AppContent = () => {
     rejectCall,
     endCall,
     toggleMute,
-    toggleCamera
+    toggleCamera,
+    socket
   } = useWebRTC();
 
   if (loading) {
@@ -71,6 +72,7 @@ const AppContent = () => {
           onlineUsers={onlineUsers}
           startCall={startCall}
           user={user}
+          socket={socket}
         />
       )}
 

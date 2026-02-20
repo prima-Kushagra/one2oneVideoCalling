@@ -1,6 +1,15 @@
-.dashboard {
+.dashboard-layout {
+  display: flex;
   width: 95%;
-  max-width: 1000px;
+  max-width: 1400px;
+  margin: 2rem auto;
+  gap: 2rem;
+  height: calc(100vh - 4rem);
+  align-items: stretch;
+}
+
+.dashboard-main {
+  flex: 1;
   padding: 3rem;
   background: var(--card-bg);
   backdrop-filter: blur(16px);
@@ -8,7 +17,14 @@
   border-radius: 32px;
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-xl);
-  margin: 2rem auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-sidebar {
+  width: 380px;
+  height: 100%;
 }
 
 .dashboard-header {
