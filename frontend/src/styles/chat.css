@@ -14,92 +14,143 @@
     background: rgba(255, 255, 255, 0.02);
 }
 
-.chat-header h3 {
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: white;
-    letter-spacing: -0.01em;
-}
-
-.room-selector {
+/* Lobby View Styles */
+.lobby-view .lobby-tabs {
     display: flex;
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    margin-bottom: 12px;
-    scrollbar-width: none;
+    margin-top: 1rem;
 }
 
-.room-selector::-webkit-scrollbar {
-    display: none;
-}
-
-.room-btn {
-    padding: 6px 14px;
+.lobby-view .lobby-tabs button {
+    flex: 1;
+    padding: 8px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: 10px;
     color: var(--text-secondary);
-    font-size: 0.85rem;
-    font-weight: 500;
-    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
 }
 
-.room-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-.room-btn.active {
+.lobby-view .lobby-tabs button.active {
     background: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
-    box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-.join-room-form {
-    display: flex;
-    gap: 8px;
-}
-
-.join-room-form input {
+.lobby-content {
     flex: 1;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--glass-border);
-    border-radius: 10px;
-    padding: 8px 12px;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.room-list h4,
+.lobby-form h4 {
     color: white;
-    font-size: 0.85rem;
-    transition: var(--transition);
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    opacity: 0.9;
 }
 
-.join-room-form input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    background: rgba(0, 0, 0, 0.3);
+.room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    margin-bottom: 10px;
 }
 
-.join-room-form button {
+.room-item .name {
+    display: block;
+    font-weight: 600;
+    color: white;
+}
+
+.room-item .count {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.room-item button {
+    padding: 6px 16px;
     background: var(--primary-color);
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     color: white;
-    width: 36px;
-    height: 36px;
+    font-size: 0.8rem;
+    font-weight: 600;
     cursor: pointer;
+}
+
+.lobby-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.lobby-form p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.lobby-form input[type="text"] {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 12px;
+    color: white;
+}
+
+.checkbox-group label {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+/* Chatting Header */
+.chat-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.leave-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
     transition: var(--transition);
 }
 
-.join-room-form button:hover {
-    transform: scale(1.05);
-    background: var(--primary-glow);
+.leave-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.room-badge {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    border: 1px solid var(--glass-border);
 }
 
 .chat-messages {

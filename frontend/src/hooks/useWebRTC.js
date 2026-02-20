@@ -19,6 +19,7 @@ export const useWebRTC = () => {
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
 
+    const [socket, setSocket] = useState(null);
     const socketRef = useRef(null);
     const peerConnectionRef = useRef(null);
     const localStreamRef = useRef(null);
@@ -31,45 +32,34 @@ export const useWebRTC = () => {
         targetIdRef.current = targetId;
     }, [targetId]);
 
-
-    useEffect(() => {
-        if (localVideoRef.current && localStreamRef.current) {
-            localVideoRef.current.srcObject = localStreamRef.current;
-        }
-    }, [callStatus]);
-
-
     useEffect(() => {
         if (!token) return;
 
-        socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
+        const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
             auth: { token },
             transports: ['websocket'],
             secure: true,
             reconnection: true
         });
 
+        socketRef.current = newSocket;
+        setSocket(newSocket);
 
-        socketRef.current.on('update-user-list', (users) => {
-
+        newSocket.on('update-user-list', (users) => {
             setOnlineUsers(users.filter(u => u.userId !== user.id));
         });
 
-        socketRef.current.on('incoming-call', ({ fromId, fromName, offer }) => {
-            if (callStatus !== 'idle') {
-
-                return;
-            }
+        newSocket.on('incoming-call', ({ fromId, fromName, offer }) => {
+            if (callStatus !== 'idle') return;
             setIncomingCall({ fromId, fromName, offer });
             setCallStatus('receiving');
             setTargetId(fromId);
         });
 
-        socketRef.current.on('call-answered', async ({ answer }) => {
+        newSocket.on('call-answered', async ({ answer }) => {
             if (peerConnectionRef.current) {
                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
                 setCallStatus('connected');
-
                 while (pendingCandidatesRef.current.length > 0) {
                     const candidate = pendingCandidatesRef.current.shift();
                     await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -77,7 +67,7 @@ export const useWebRTC = () => {
             }
         });
 
-        socketRef.current.on('ice-candidate', async ({ candidate }) => {
+        newSocket.on('ice-candidate', async ({ candidate }) => {
             if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
                 await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
             } else {
@@ -85,27 +75,18 @@ export const useWebRTC = () => {
             }
         });
 
-        socketRef.current.on('user-busy', () => {
+        newSocket.on('user-busy', () => {
             alert('User is currently in another call.');
             cleanup();
         });
 
-        socketRef.current.on('reconnect', () => {
-            console.log("Reconnected to server");
-        });
-
-        socketRef.current.on('call-ended', () => {
+        newSocket.on('call-ended', () => {
             handleCallEnded();
         });
 
-        socketRef.current.on('connect_error', (err) => {
-            console.error('Socket connection error:', err.message);
-        });
-
         return () => {
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-            }
+            newSocket.disconnect();
+            setSocket(null);
             cleanup();
         };
     }, [token, user?.id]);

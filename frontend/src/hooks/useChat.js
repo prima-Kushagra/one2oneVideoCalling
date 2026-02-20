@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Custom hook to manage chat state and room logic
@@ -6,19 +6,38 @@ import { useState, useEffect, useCallback } from 'react';
  */
 export const useChat = (socket) => {
     const [messages, setMessages] = useState([]);
-    const [activeRoom, setActiveRoom] = useState('public');
-    const [rooms, setRooms] = useState(['public']);
+    const [activeRoom, setActiveRoom] = useState(null); // null means in Lobby
+    const [availableRooms, setAvailableRooms] = useState([]);
+    const [status, setStatus] = useState('lobby'); // 'lobby' or 'chatting'
+
+    // Use ref to avoid stale closures in socket events
+    const activeRoomRef = useRef(null);
+
+    useEffect(() => {
+        activeRoomRef.current = activeRoom;
+    }, [activeRoom]);
 
     useEffect(() => {
         if (!socket) return;
 
-        // Join the initial room
-        socket.emit('join-room', activeRoom);
+        // Request initial rooms
+        socket.emit('get-rooms');
 
         const handleNewMessage = (message) => {
-            if (message.roomId === activeRoom) {
+            console.log("New message received:", message, "Active room ref:", activeRoomRef.current);
+            if (message.roomId === activeRoomRef.current) {
                 setMessages((prev) => [...prev, message]);
             }
+        };
+
+        const handleRoomList = (rooms) => {
+            console.log("Room list updated:", rooms);
+            setAvailableRooms(rooms);
+        };
+
+        const handleRoomCreated = ({ roomId }) => {
+            console.log("Room created successfully, joining:", roomId);
+            joinRoom(roomId);
         };
 
         const handleUserJoined = (data) => {
@@ -26,16 +45,20 @@ export const useChat = (socket) => {
         };
 
         socket.on('new-message', handleNewMessage);
+        socket.on('update-room-list', handleRoomList);
+        socket.on('room-created', handleRoomCreated);
         socket.on('user-joined-room', handleUserJoined);
 
         return () => {
             socket.off('new-message', handleNewMessage);
+            socket.off('update-room-list', handleRoomList);
+            socket.off('room-created', handleRoomCreated);
             socket.off('user-joined-room', handleUserJoined);
         };
-    }, [socket, activeRoom]);
+    }, [socket]); // Only depend on socket
 
     const sendMessage = useCallback((text) => {
-        if (!socket || !text.trim()) return;
+        if (!socket || !text.trim() || !activeRoom) return;
 
         socket.emit('send-message', {
             roomId: activeRoom,
@@ -43,25 +66,44 @@ export const useChat = (socket) => {
         });
     }, [socket, activeRoom]);
 
+    const createRoom = useCallback((name, isPrivate) => {
+        if (!socket || !name.trim()) return;
+        socket.emit('create-room', { name, isPrivate });
+    }, [socket]);
+
     const joinRoom = useCallback((roomId) => {
         if (!socket) return;
 
-        // Leave old room
-        socket.emit('leave-room', activeRoom);
-
-        // Join new room
-        setActiveRoom(roomId);
-        setMessages([]); // Clear messages when switching rooms (for now)
-        if (!rooms.includes(roomId)) {
-            setRooms(prev => [...prev, roomId]);
+        // No need to "leave" explicitly as join-room handler on server handles logic
+        // but we emit it for cleanup if we want
+        if (activeRoomRef.current) {
+            socket.emit('leave-room', activeRoomRef.current);
         }
-    }, [socket, activeRoom, rooms]);
+
+        socket.emit('join-room', roomId);
+        setActiveRoom(roomId);
+        setStatus('chatting');
+        setMessages([]);
+    }, [socket]);
+
+    const leaveRoom = useCallback(() => {
+        if (!socket || !activeRoom) return;
+
+        socket.emit('leave-room', activeRoom);
+        setActiveRoom(null);
+        setStatus('lobby');
+        setMessages([]);
+        socket.emit('get-rooms');
+    }, [socket, activeRoom]);
 
     return {
         messages,
         activeRoom,
-        rooms,
+        availableRooms,
+        status,
         sendMessage,
-        joinRoom
+        createRoom,
+        joinRoom,
+        leaveRoom
     };
 };
