@@ -57,15 +57,6 @@ const AppContent = () => {
   // If LOGGED IN, show app content
   return (
     <div className="app-container">
-      <div className="logout-container">
-        <button className="logout-btn" onClick={logout}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
-          </svg>
-          Logout
-        </button>
-      </div>
-
       {callStatus === 'idle' && (
         <Dashboard
           onlineUsers={onlineUsers}
@@ -126,6 +117,17 @@ const AppContent = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {callStatus === 'idle' && (
+        <div className="logout-container">
+          <button className="logout-btn" onClick={logout}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+            Logout
+          </button>
         </div>
       )}
     </div>

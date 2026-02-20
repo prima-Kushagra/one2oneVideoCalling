@@ -90,6 +90,10 @@ export const useWebRTC = () => {
             cleanup();
         });
 
+        socketRef.current.on('reconnect', () => {
+  console.log("Reconnected to server");
+});
+
         socketRef.current.on('call-ended', () => {
             handleCallEnded();
         });
@@ -256,6 +260,7 @@ export const useWebRTC = () => {
         }
         cleanup();
     };
+    
 
     const endCall = () => {
         if (targetId && socketRef.current) {

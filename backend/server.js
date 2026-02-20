@@ -7,10 +7,9 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user.model');
 
-
 const app = express();
-app.use(cors()); 
-app.use(express.json()); 
+app.use(cors());
+app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -20,84 +19,74 @@ const io = new Server(server, {
   }
 });
 
-// --- MongoDB Connection ---
+
 console.log('Attempting to connect to MongoDB...');
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log(' Connected to MongoDB Atlas'))
+  .then(() => console.log('Connected to MongoDB Atlas'))
   .catch(err => {
-    console.error(' MongoDB connection error:', err.message);
-    process.exit(1); 
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
   });
 
 
 
-// Signup
+
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    console.log(`Signup attempt for: ${email}`);
 
-    // Check if user exists
     let user = await User.findOne({ $or: [{ email }, { username }] });
     if (user) {
-      console.log(`Signup failed: User ${email} or ${username} already exists`);
       return res.status(400).json({ message: 'User already exists' });
     }
 
     user = new User({ username, email, password });
     await user.save();
 
-    console.log(`Signup successful: ${email}`);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: user._id, username: user.username, email: user.email } });
-  } catch (err) {
-    console.error('Signup error details:', err);
-    res.status(500).json({
-      message: 'Server error during signup',
-      error: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+
+    res.status(201).json({
+      token,
+      user: { id: user._id, username: user.username, email: user.email }
     });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Server error during signup' });
   }
 });
 
-// Login
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log(`Login attempt for: ${email}`);
 
     const user = await User.findOne({ email });
-    if (!user) {
-      console.log(`Login failed: User ${email} not found`);
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      console.log(`Login failed: Incorrect password for ${email}`);
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
+    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-    console.log(`Login successful: ${email}`);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
-  } catch (err) {
-    console.error('Login error details:', err);
-    res.status(500).json({
-      message: 'Server error during login',
-      error: err.message
+
+    res.json({
+      token,
+      user: { id: user._id, username: user.username, email: user.email }
     });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Server error during login' });
   }
 });
 
-// --- User Presence Tracking ---
+
+
 const onlineUsers = new Map();
 
 const getOnlineUsers = () => {
   return Array.from(onlineUsers.entries()).map(([userId, data]) => ({
     userId,
     username: data.username,
-    status: data.status || 'online'
+    status: data.status
   }));
 };
 
@@ -106,147 +95,169 @@ const broadcastUserList = () => {
 };
 
 
+
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
-  if (!token) {
-    return next(new Error('Authentication error: Token missing'));
-  }
+  if (!token) return next(new Error('Authentication error'));
 
   jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
-    if (err) {
-      return next(new Error('Authentication error: Invalid token'));
-    }
+    if (err) return next(new Error('Invalid token'));
+
     try {
       const user = await User.findById(decoded.id);
-      if (!user) {
-        return next(new Error('Authentication error: User not found'));
-      }
+      if (!user) return next(new Error('User not found'));
+
       socket.user = user;
       next();
-    } catch (error) {
-      next(new Error('Authentication error: Server error'));
+    } catch {
+      next(new Error('Authentication server error'));
     }
   });
 });
 
-// --- Socket.IO Logic ---
+
+
 io.on('connection', (socket) => {
+
   const userId = socket.user._id.toString();
   const username = socket.user.username;
 
-  console.log(`User connected: ${username} (${userId}) - Socket: ${socket.id}`);
+  console.log(`User connected: ${username} (${userId}) - ${socket.id}`);
 
-  
-  onlineUsers.set(userId, { socketId: socket.id, username, status: 'online', partnerId: null });
+ 
+  const existingUser = onlineUsers.get(userId);
+
+  if (existingUser) {
+    console.log("User reconnected:", username);
+
+    existingUser.socketId = socket.id;
+    existingUser.status = 'online';
+    existingUser.partnerId = null;
+
+    onlineUsers.set(userId, existingUser);
+  } else {
+    onlineUsers.set(userId, {
+      socketId: socket.id,
+      username,
+      status: 'online',
+      partnerId: null
+    });
+  }
+
   broadcastUserList();
 
   
+  socket.on('call-user', ({ toId, offer }) => {
 
-  socket.on('call-user', (data) => {
-    const { toId, offer } = data;
-    const callerId = userId;
     const target = onlineUsers.get(toId);
-
-    if (!target) {
-      return socket.emit('error', { message: 'User is offline' });
-    }
+    if (!target) return socket.emit('error', { message: 'User offline' });
 
     if (target.status === 'busy') {
-      console.log(`Call rejected: ${target.username} is busy`);
-      return socket.emit('user-busy', { toId });
+      return socket.emit('user-busy');
     }
 
-    console.log(`Relaying call from ${username} to ${target.username}`);
+    onlineUsers.get(userId).status = 'busy';
+    onlineUsers.get(userId).partnerId = toId;
 
-    
-    onlineUsers.get(callerId).status = 'busy';
-    onlineUsers.get(callerId).partnerId = toId;
-    onlineUsers.get(toId).status = 'busy';
-    onlineUsers.get(toId).partnerId = callerId;
+    target.status = 'busy';
+    target.partnerId = userId;
+
     broadcastUserList();
 
-    socket.to(target.socketId).emit('incoming-call', {
+    io.to(target.socketId).emit('incoming-call', {
       fromId: userId,
       fromName: username,
       offer
     });
   });
 
-  socket.on('answer-call', (data) => {
-    const { toId, answer } = data;
+ 
+  socket.on('answer-call', ({ toId, answer }) => {
     const target = onlineUsers.get(toId);
     if (target) {
-      socket.to(target.socketId).emit('call-answered', {
+      io.to(target.socketId).emit('call-answered', {
         fromId: userId,
         answer
       });
     }
   });
 
-  socket.on('ice-candidate', (data) => {
-    const { toId, candidate } = data;
+ 
+  socket.on('ice-candidate', ({ toId, candidate }) => {
     const target = onlineUsers.get(toId);
     if (target) {
-      socket.to(target.socketId).emit('ice-candidate', {
+      io.to(target.socketId).emit('ice-candidate', {
         fromId: userId,
         candidate
       });
     }
   });
 
-  socket.on('end-call', (data) => {
-    const { toId } = data;
 
-    
+  socket.on('end-call', ({ toId }) => {
+
     if (onlineUsers.has(userId)) {
       onlineUsers.get(userId).status = 'online';
       onlineUsers.get(userId).partnerId = null;
     }
+
     if (onlineUsers.has(toId)) {
       onlineUsers.get(toId).status = 'online';
       onlineUsers.get(toId).partnerId = null;
+      io.to(onlineUsers.get(toId).socketId).emit('call-ended', { fromId: userId });
     }
 
     broadcastUserList();
-
-    const target = onlineUsers.get(toId);
-    if (target) {
-      socket.to(target.socketId).emit('call-ended', { fromId: userId });
-    }
   });
 
-  
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${username} (${userId})`);
+  socket.on('disconnect', (reason) => {
 
-    const userData = onlineUsers.get(userId);
-    if (userData && userData.partnerId) {
-      const partnerId = userData.partnerId;
-      const partnerData = onlineUsers.get(partnerId);
+    console.log(`User disconnected: ${username}`);
+    console.log("Reason:", reason);
 
-      if (partnerData) {
-        
-        socket.to(partnerData.socketId).emit('call-ended', { fromId: userId });
+    setTimeout(() => {
 
-        
-        partnerData.status = 'online';
-        partnerData.partnerId = null;
+      const userData = onlineUsers.get(userId);
+      if (!userData) return;
+
+      if (userData.socketId !== socket.id) {
+        console.log("Reconnected detected. Skipping cleanup.");
+        return;
       }
-    }
 
-    onlineUsers.delete(userId);
-    broadcastUserList();
+      console.log("Final cleanup for:", username);
+
+      if (userData.partnerId) {
+        const partner = onlineUsers.get(userData.partnerId);
+
+        if (partner) {
+          partner.status = 'online';
+          partner.partnerId = null;
+
+          io.to(partner.socketId).emit('call-ended', { fromId: userId });
+        }
+      }
+
+      onlineUsers.delete(userId);
+      broadcastUserList();
+
+    }, 3000); 
   });
+
 });
+
 
 
 app.use((err, req, res, next) => {
   console.error('Unhandled Error:', err);
-  res.status(500).json({ message: 'Internal Server Error', error: err.message });
+  res.status(500).json({ message: 'Internal Server Error' });
 });
 
+
+
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
-  console.log(` Server running on port ${PORT}`);
-  console.log(` Socket.IO ready`);
+  console.log(`Server running on port ${PORT}`);
+  console.log('Socket.IO ready');
 });
