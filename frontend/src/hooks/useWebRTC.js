@@ -49,6 +49,10 @@ export const useWebRTC = () => {
             setOnlineUsers(users.filter(u => u.userId !== user.id));
         });
 
+        newSocket.on('connect_error', (err) => {
+            console.log("Socket auth error:", err.message);
+        });
+
         newSocket.on('incoming-call', ({ fromId, fromName, offer }) => {
             if (callStatus !== 'idle') return;
             setIncomingCall({ fromId, fromName, offer });

@@ -22,19 +22,28 @@ module.exports = (io, socket, { onlineUsers }) => {
     socket.on('create-room', ({ name, isPrivate }) => {
         const roomId = isPrivate ? Math.random().toString(36).substring(7) : name.toLowerCase().replace(/\s+/g, '-');
 
+        
+        if (!isPrivate && roomsMap.has(roomId)) {
+            return socket.emit('error-message', 'Room already exists');
+        }
+
         if (!roomsMap.has(roomId)) {
             roomsMap.set(roomId, {
                 name,
                 isPrivate,
                 members: new Set()
             });
-            console.log(`Room created: ${name} (${roomId}) - Private: ${isPrivate}`);
         }
 
-        // Notify creator to join
+        
+        socket.join(roomId);
+        roomsMap.get(roomId).members.add(userId);
+
+        console.log(`Room created and joined: ${roomId} by ${username}`);
+
         socket.emit('room-created', { roomId, name, isPrivate });
 
-        // Broadcast list update to EVERYONE immediately if public
+       
         if (!isPrivate) {
             io.emit('update-room-list', getPublicRooms());
         }
@@ -55,10 +64,14 @@ module.exports = (io, socket, { onlineUsers }) => {
         room.members.add(userId);
 
         console.log(`User ${username} joined room: ${roomId}`);
-        // Notify others in room
+
+        
+        socket.emit('room-joined-success', { roomId });
+
+        
         socket.to(roomId).emit('user-joined-room', { userId, username, roomId });
 
-        // Always broadcast update to everyone to refresh member counts
+        
         io.emit('update-room-list', getPublicRooms());
     });
 
@@ -69,7 +82,7 @@ module.exports = (io, socket, { onlineUsers }) => {
             room.members.delete(userId);
             console.log(`User ${username} left room: ${roomId}`);
 
-            // Cleanup empty rooms
+           
             if (room.members.size === 0) {
                 roomsMap.delete(roomId);
             }
@@ -81,6 +94,9 @@ module.exports = (io, socket, { onlineUsers }) => {
     socket.on('send-message', ({ roomId, message }) => {
         if (!roomId || !message.trim()) return;
 
+       
+        console.log("Room members:", io.sockets.adapter.rooms.get(roomId));
+
         const messageData = {
             id: Date.now().toString() + Math.random().toString(36).substring(5),
             senderId: userId,
@@ -91,20 +107,23 @@ module.exports = (io, socket, { onlineUsers }) => {
         };
 
         console.log(`[CHAT] ${roomId} | ${username}: ${message}`);
-        // Emit to EVERYONE in the room including sender
+        
         io.to(roomId).emit('new-message', messageData);
     });
 
-    // Helper to cleanup user from all rooms on disconnect
+    
     const cleanupUserFromRooms = () => {
         roomsMap.forEach((room, roomId) => {
             if (room.members.has(userId)) {
                 room.members.delete(userId);
+                socket.leave(roomId);
+
                 if (room.members.size === 0 && roomId !== 'public') {
                     roomsMap.delete(roomId);
                 }
             }
         });
+
         io.emit('update-room-list', getPublicRooms());
     };
 

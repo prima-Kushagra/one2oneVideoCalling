@@ -6,11 +6,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
  */
 export const useChat = (socket) => {
     const [messages, setMessages] = useState([]);
-    const [activeRoom, setActiveRoom] = useState(null); // null means in Lobby
+    const [activeRoom, setActiveRoom] = useState(null); 
     const [availableRooms, setAvailableRooms] = useState([]);
-    const [status, setStatus] = useState('lobby'); // 'lobby' or 'chatting'
+    const [status, setStatus] = useState('lobby'); 
 
-    // Use ref to avoid stale closures in socket events
+    
     const activeRoomRef = useRef(null);
 
     useEffect(() => {
@@ -20,14 +20,15 @@ export const useChat = (socket) => {
     useEffect(() => {
         if (!socket) return;
 
-        // Request initial rooms
+       
         socket.emit('get-rooms');
 
         const handleNewMessage = (message) => {
             console.log("New message received:", message, "Active room ref:", activeRoomRef.current);
-            if (message.roomId === activeRoomRef.current) {
-                setMessages((prev) => [...prev, message]);
-            }
+            setMessages((prev) => {
+                if (message.roomId !== activeRoomRef.current) return prev;
+                return [...prev, message];
+            });
         };
 
         const handleRoomList = (rooms) => {
@@ -37,25 +38,34 @@ export const useChat = (socket) => {
 
         const handleRoomCreated = ({ roomId }) => {
             console.log("Room created successfully, joining:", roomId);
-            joinRoom(roomId);
+
+            setActiveRoom(roomId);
+            setStatus('chatting');
+            setMessages([]);
         };
 
         const handleUserJoined = (data) => {
             console.log(`User ${data.username} joined room ${data.roomId}`);
         };
 
+        const handleConnectError = (err) => {
+            console.log("Socket auth error:", err.message);
+        };
+
         socket.on('new-message', handleNewMessage);
         socket.on('update-room-list', handleRoomList);
         socket.on('room-created', handleRoomCreated);
         socket.on('user-joined-room', handleUserJoined);
+        socket.on('connect_error', handleConnectError);
 
         return () => {
             socket.off('new-message', handleNewMessage);
             socket.off('update-room-list', handleRoomList);
             socket.off('room-created', handleRoomCreated);
             socket.off('user-joined-room', handleUserJoined);
+            socket.off('connect_error', handleConnectError);
         };
-    }, [socket]); // Only depend on socket
+    }, [socket]); 
 
     const sendMessage = useCallback((text) => {
         if (!socket || !text.trim() || !activeRoom) return;
@@ -74,9 +84,8 @@ export const useChat = (socket) => {
     const joinRoom = useCallback((roomId) => {
         if (!socket) return;
 
-        // No need to "leave" explicitly as join-room handler on server handles logic
-        // but we emit it for cleanup if we want
-        if (activeRoomRef.current) {
+        
+        if (activeRoomRef.current && activeRoomRef.current !== roomId) {
             socket.emit('leave-room', activeRoomRef.current);
         }
 
