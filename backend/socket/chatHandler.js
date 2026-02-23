@@ -22,7 +22,7 @@ module.exports = (io, socket, { onlineUsers }) => {
     socket.on('create-room', ({ name, isPrivate }) => {
         const roomId = isPrivate ? Math.random().toString(36).substring(7) : name.toLowerCase().replace(/\s+/g, '-');
 
-        
+
         if (!isPrivate && roomsMap.has(roomId)) {
             return socket.emit('error-message', 'Room already exists');
         }
@@ -35,7 +35,7 @@ module.exports = (io, socket, { onlineUsers }) => {
             });
         }
 
-        
+
         socket.join(roomId);
         roomsMap.get(roomId).members.add(userId);
 
@@ -43,35 +43,30 @@ module.exports = (io, socket, { onlineUsers }) => {
 
         socket.emit('room-created', { roomId, name, isPrivate });
 
-       
+
         if (!isPrivate) {
             io.emit('update-room-list', getPublicRooms());
         }
     });
 
     socket.on('join-room', (roomId) => {
-        socket.join(roomId);
+        const room = roomsMap.get(roomId);
 
-        if (!roomsMap.has(roomId)) {
-            roomsMap.set(roomId, {
-                name: roomId,
-                isPrivate: false,
-                members: new Set()
-            });
+        if (!room) {
+            return socket.emit('error-message', 'Room does not exist');
         }
 
-        const room = roomsMap.get(roomId);
+        socket.join(roomId);
         room.members.add(userId);
 
         console.log(`User ${username} joined room: ${roomId}`);
 
-        
-        socket.emit('room-joined-success', { roomId });
+        socket.to(roomId).emit('user-joined-room', {
+            userId,
+            username,
+            roomId
+        });
 
-        
-        socket.to(roomId).emit('user-joined-room', { userId, username, roomId });
-
-        
         io.emit('update-room-list', getPublicRooms());
     });
 
@@ -82,7 +77,7 @@ module.exports = (io, socket, { onlineUsers }) => {
             room.members.delete(userId);
             console.log(`User ${username} left room: ${roomId}`);
 
-           
+
             if (room.members.size === 0) {
                 roomsMap.delete(roomId);
             }
@@ -94,7 +89,7 @@ module.exports = (io, socket, { onlineUsers }) => {
     socket.on('send-message', ({ roomId, message }) => {
         if (!roomId || !message.trim()) return;
 
-       
+
         console.log("Room members:", io.sockets.adapter.rooms.get(roomId));
 
         const messageData = {
@@ -107,19 +102,22 @@ module.exports = (io, socket, { onlineUsers }) => {
         };
 
         console.log(`[CHAT] ${roomId} | ${username}: ${message}`);
-        
+
         io.to(roomId).emit('new-message', messageData);
     });
 
-    
+
     const cleanupUserFromRooms = () => {
         roomsMap.forEach((room, roomId) => {
             if (room.members.has(userId)) {
                 room.members.delete(userId);
                 socket.leave(roomId);
 
-                if (room.members.size === 0 && roomId !== 'public') {
-                    roomsMap.delete(roomId);
+                if (room.members.size === 0) {
+                    room.expiryTimer = setTimeout(() => {
+                        roomsMap.delete(roomId);
+                        console.log(`Room ${roomId} expired`);
+                    }, 5 * 60 * 1000);
                 }
             }
         });

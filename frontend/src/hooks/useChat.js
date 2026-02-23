@@ -6,11 +6,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
  */
 export const useChat = (socket) => {
     const [messages, setMessages] = useState([]);
-    const [activeRoom, setActiveRoom] = useState(null); 
+    const [activeRoom, setActiveRoom] = useState(null);
     const [availableRooms, setAvailableRooms] = useState([]);
-    const [status, setStatus] = useState('lobby'); 
+    const [status, setStatus] = useState('lobby');
 
-    
+
     const activeRoomRef = useRef(null);
 
     useEffect(() => {
@@ -20,7 +20,7 @@ export const useChat = (socket) => {
     useEffect(() => {
         if (!socket) return;
 
-       
+
         socket.emit('get-rooms');
 
         const handleNewMessage = (message) => {
@@ -65,7 +65,7 @@ export const useChat = (socket) => {
             socket.off('user-joined-room', handleUserJoined);
             socket.off('connect_error', handleConnectError);
         };
-    }, [socket]); 
+    }, [socket]);
 
     const sendMessage = useCallback((text) => {
         if (!socket || !text.trim() || !activeRoom) return;
@@ -84,13 +84,14 @@ export const useChat = (socket) => {
     const joinRoom = useCallback((roomId) => {
         if (!socket) return;
 
-        
+
         if (activeRoomRef.current && activeRoomRef.current !== roomId) {
             socket.emit('leave-room', activeRoomRef.current);
         }
+        const cleanId = roomId.trim();
+        socket.emit('join-room', cleanId);
 
-        socket.emit('join-room', roomId);
-        setActiveRoom(roomId);
+        setActiveRoom(cleanId);
         setStatus('chatting');
         setMessages([]);
     }, [socket]);
