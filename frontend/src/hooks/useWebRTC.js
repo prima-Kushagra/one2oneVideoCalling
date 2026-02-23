@@ -305,6 +305,7 @@ export const useWebRTC = () => {
         rejectCall,
         endCall,
         toggleMute,
-        toggleCamera
+        toggleCamera,
+        socket: socketRef.current
     };
 };
