@@ -19,7 +19,6 @@ export const useWebRTC = () => {
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
 
-    const [socket, setSocket] = useState(null);
     const socketRef = useRef(null);
     const peerConnectionRef = useRef(null);
     const localStreamRef = useRef(null);
@@ -33,64 +32,75 @@ export const useWebRTC = () => {
     }, [targetId]);
 
     useEffect(() => {
+        if (localVideoRef.current && localStreamRef.current) {
+            localVideoRef.current.srcObject = localStreamRef.current;
+        }
+    }, [callStatus]);
+
+    useEffect(() => {
         if (!token) return;
 
-        const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
+        socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
             auth: { token },
             transports: ['websocket'],
             secure: true,
             reconnection: true
         });
 
-        socketRef.current = newSocket;
-        setSocket(newSocket);
-
-        newSocket.on('update-user-list', (users) => {
+        socketRef.current.on('update-user-list', (users) => {
             setOnlineUsers(users.filter(u => u.userId !== user.id));
         });
 
-        newSocket.on('connect_error', (err) => {
-            console.log("Socket auth error:", err.message);
-        });
-
-        newSocket.on('incoming-call', ({ fromId, fromName, offer }) => {
+        socketRef.current.on('incoming-call', ({ fromId, fromName, offer }) => {
             if (callStatus !== 'idle') return;
             setIncomingCall({ fromId, fromName, offer });
             setCallStatus('receiving');
             setTargetId(fromId);
         });
 
-        newSocket.on('call-answered', async ({ answer }) => {
+        socketRef.current.on('call-answered', async ({ answer }) => {
             if (peerConnectionRef.current) {
-                await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+                await peerConnectionRef.current.setRemoteDescription(
+                    new RTCSessionDescription(answer)
+                );
                 setCallStatus('connected');
+
                 while (pendingCandidatesRef.current.length > 0) {
                     const candidate = pendingCandidatesRef.current.shift();
-                    await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                    await peerConnectionRef.current.addIceCandidate(
+                        new RTCIceCandidate(candidate)
+                    );
                 }
             }
         });
 
-        newSocket.on('ice-candidate', async ({ candidate }) => {
+        socketRef.current.on('ice-candidate', async ({ candidate }) => {
             if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
-                await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                await peerConnectionRef.current.addIceCandidate(
+                    new RTCIceCandidate(candidate)
+                );
             } else {
                 pendingCandidatesRef.current.push(candidate);
             }
         });
 
-        newSocket.on('user-busy', () => {
+        socketRef.current.on('user-busy', () => {
             alert('User is currently in another call.');
             cleanup();
         });
 
-        newSocket.on('call-ended', () => {
+        socketRef.current.on('call-ended', () => {
             handleCallEnded();
         });
 
+        socketRef.current.on('connect_error', (err) => {
+            console.error('Socket connection error:', err.message);
+        });
+
         return () => {
-            newSocket.disconnect();
-            setSocket(null);
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
             cleanup();
         };
     }, [token, user?.id]);
@@ -100,13 +110,14 @@ export const useWebRTC = () => {
             peerConnectionRef.current.close();
             peerConnectionRef.current = null;
         }
+
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => {
-                console.log("Stopping track:", track.label);
                 track.stop();
             });
             localStreamRef.current = null;
         }
+
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
         if (localVideoRef.current) localVideoRef.current.srcObject = null;
 
@@ -121,27 +132,29 @@ export const useWebRTC = () => {
     }, [cleanup]);
 
     const getMedia = async () => {
-
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
         }
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            localStreamRef.current = stream;
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
 
+            localStreamRef.current = stream;
 
             if (localVideoRef.current) {
                 localVideoRef.current.srcObject = stream;
             }
+
             return stream;
         } catch (err) {
             console.error("Media access error:", err);
             return null;
         }
     };
-
 
     useEffect(() => {
         if (callStatus === 'connected' || callStatus === 'calling') {
@@ -201,6 +214,7 @@ export const useWebRTC = () => {
     const startCall = async (toUserId) => {
         setTargetId(toUserId);
         setCallStatus('calling');
+
         const stream = await getMedia();
         if (!stream) {
             setCallStatus('idle');
@@ -218,6 +232,7 @@ export const useWebRTC = () => {
         if (!incomingCall) return;
 
         setCallStatus('connected');
+
         const stream = await getMedia();
         if (!stream) {
             rejectCall();
@@ -225,13 +240,17 @@ export const useWebRTC = () => {
         }
 
         const pc = createPeerConnection(incomingCall.fromId);
-        await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+        await pc.setRemoteDescription(
+            new RTCSessionDescription(incomingCall.offer)
+        );
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        socketRef.current.emit('answer-call', { toId: incomingCall.fromId, answer });
-
+        socketRef.current.emit('answer-call', {
+            toId: incomingCall.fromId,
+            answer
+        });
 
         while (pendingCandidatesRef.current.length > 0) {
             const candidate = pendingCandidatesRef.current.shift();
@@ -245,7 +264,6 @@ export const useWebRTC = () => {
         }
         cleanup();
     };
-
 
     const endCall = () => {
         if (targetId && socketRef.current) {
@@ -287,8 +305,6 @@ export const useWebRTC = () => {
         rejectCall,
         endCall,
         toggleMute,
-        toggleCamera,
-        socket: socketRef.current
+        toggleCamera
     };
 };
-
