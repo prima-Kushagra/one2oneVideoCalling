@@ -139,15 +139,24 @@ const Chat = ({ user, messages, activeRoom, availableRooms, status, sendMessage,
                         <span>Send a message to start conversing.</span>
                     </div>
                 ) : (
-                    messages.map((msg) => (
-                        <div key={msg.id} className={`message ${msg.senderId === user.id ? 'sent' : 'received'}`}>
-                            <div className="message-info">
-                                <span className="sender">{msg.senderName}</span>
-                                <span className="time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    messages.map((msg) => {
+                        if (msg.type === "system") {
+                            return (
+                                <div key={msg.id} className="message system">
+                                    <div className="message-text">{msg.text}</div>
+                                </div>
+                            );
+                        }
+                        return (
+                            <div key={msg.id} className={`message ${msg.senderId === user.id ? 'sent' : 'received'}`}>
+                                <div className="message-info">
+                                    <span className="sender">{msg.senderName}</span>
+                                    <span className="time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                                <div className="message-text">{msg.text}</div>
                             </div>
-                            <div className="message-text">{msg.text}</div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
                 <div ref={messagesEndRef} />
             </div>
